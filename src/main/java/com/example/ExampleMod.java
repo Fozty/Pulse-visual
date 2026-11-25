@@ -1,30 +1,50 @@
 package com.example;
 
-import net.fabricmc.api.ModInitializer;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.util.InputUtil;
+import net.minecraft.client.gui.DrawContext;
+import org.lwjgl.glfw.GLFW;
 
-import net.minecraft.resources.Identifier;
+public class ExampleMod implements ClientModInitializer {
+    private static boolean menuOpen = false;
+    private static KeyBinding menuKey;
+    private float pulseTime = 0f;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+    @Override
+    public void onInitializeClient() {
+        menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            "key.pulse.menu", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, "category.pulse"
+        ));
 
-public class ExampleMod implements ModInitializer {
-	public static final String MOD_ID = "modid";
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            while (menuKey.wasPressed()) {
+                menuOpen = !menuOpen;
+            }
+        });
 
-	// This logger is used to write text to the console and the log file.
-	// It is considered best practice to use your mod id as the logger's name.
-	// That way, it's clear which mod wrote info, warnings, and errors.
-	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+        HudRenderCallback.EVENT.register((DrawContext context, float tickDelta) -> {
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (mc.player == null) return;
 
-	@Override
-	public void onInitialize() {
-		// This code runs as soon as Minecraft is in a mod-load-ready state.
-		// However, some things (like resources) may still be uninitialized.
-		// Proceed with mild caution.
+            pulseTime += 0.05f;
+            float phase = (float) ((Math.sin(pulseTime) + 1) / 2);
+            int width = mc.getWindow().getScaledWidth();
+            int height = mc.getWindow().getScaledHeight();
+            
+            int radius = (int) (40 + 20 * phase);
+            int alpha = (int) ((0.4 + 0.6 * phase) * 255);
+            int color = (alpha << 24) | 0x00B4FF; 
+            context.fill(width / 2 - radius, height / 2 - radius, width / 2 + radius, height / 2 + radius, color);
 
-		LOGGER.info("Hello Fabric world!");
-	}
-
-	public static Identifier id(String path) {
-		return Identifier.fromNamespaceAndPath(MOD_ID, path);
-	}
-}
+            if (menuOpen) {
+                context.fill(0, 0, width, height, 0x99000000);
+                context.drawText(mc.textRenderer, "Pulse Menu (Right Shift)", 20, 20, 0xFFFFFF, true);
+            }
+        });
+    }
+												  }
