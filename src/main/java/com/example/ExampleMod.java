@@ -47,4 +47,4 @@ public class ExampleMod implements ClientModInitializer {
             }
         });
     }
-												  }
+}
